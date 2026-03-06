@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic PR Workflow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 15px;
+    color: #8b949e;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 780px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .terminal-bar {
+    background: #1c2128;
+    border-bottom: 1px solid #30363d;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.red { background: #ff5f57; }
+  .dot.yellow { background: #ffbd2e; }
+  .dot.green { background: #28ca41; }
+  .terminal-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #8b949e;
+    margin-left: 8px;
+  }
+
+  .scene {
+    display: none;
+    padding: 28px 32px 32px;
+    min-height: 360px;
+    flex-direction: column;
+    gap: 16px;
+    animation: sceneFadeIn 0.4s ease forwards;
+  }
+  .scene.active { display: flex; }
+
+  @keyframes sceneFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .scene-label {
+    font-size: 11px;
+    color: #484f58;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .scene-title { font-size: 16px; font-weight: 600; color: #e6edf3; margin-bottom: 2px; }
+  .scene-sub { font-size: 12.5px; color: #8b949e; margin-bottom: 8px; }
+
+  .chat { display: flex; flex-direction: column; gap: 12px; }
+  .bubble {
+    display: flex; gap: 10px; align-items: flex-start;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .bubble.visible { opacity: 1; transform: translateY(0); }
+
+  .avatar {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; margin-top: 2px;
+  }
+  .avatar.user { background: #21262d; }
+  .avatar.agent { background: #1a3a2a; }
+
+  .msg {
+    background: #21262d; border: 1px solid #30363d;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 13.5px; line-height: 1.6; color: #e6edf3; max-width: 600px;
+  }
+  .msg.agent-msg { background: #161b22; border-color: #238636; }
+  .msg code {
+    font-family: 'JetBrains Mono', monospace;
+    background: #0d1117; padding: 1px 5px; border-radius: 4px;
+    font-size: 12px; color: #79c0ff;
+  }
+
+  .plan-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px; margin-top: 6px;
+  }
+  .plan-table th {
+    text-align: left; padding: 6px 12px; color: #8b949e;
+    border-bottom: 1px solid #30363d; font-weight: 600;
+  }
+  .plan-table td { padding: 7px 12px; border-bottom: 1px solid #21262d; color: #e6edf3; }
+  .plan-table tr:last-child td { border-bottom: none; }
+  .chunk-badge {
+    display: inline-block; background: #1a3a2a; border: 1px solid #238636;
+    color: #3fb950; border-radius: 4px; padding: 1px 7px; font-size: 11px;
+  }
+
+  /* Branch stack — scene 4 & 5 */
+  .branch-stack { display: flex; flex-direction: column; gap: 0; }
+  .branch-item {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr 90px 130px;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid #30363d;
+    background: #161b22;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.4s ease, background 0.4s ease;
+  }
+  .branch-item:first-child { border-radius: 8px 8px 0 0; }
+  .branch-item:last-child  { border-radius: 0 0 8px 8px; }
+  .branch-item + .branch-item { border-top: none; }
+  .branch-item.visible   { opacity: 1; transform: translateX(0); }
+  .branch-item.merged    { border-color: #238636; background: #0f2419; }
+  .branch-item.retargeted{ border-color: #1f6feb; background: #0d1f3c; }
+
+  .col-header {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr 90px 130px;
+    gap: 8px;
+    padding: 4px 14px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #484f58;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .branch-name   { color: #79c0ff; }
+  .branch-cur    { color: #8b949e; font-size: 11px; }
+  .branch-tgt    { color: #8b949e; font-size: 11px; transition: color 0.3s ease; }
+  .branch-tgt.retargeted-txt {
+    color: #58a6ff;
+    background: #0d1f3c;
+    border-radius: 4px;
+    padding: 1px 6px;
+    animation: retargetPulse 1s ease infinite alternate;
+  }
+  @keyframes retargetPulse {
+    from { color: #58a6ff; background: #0d1f3c; }
+    to   { color: #a5d6ff; background: #1a3a6c; }
+  }
+
+  .pr-badge {
+    font-size: 10px; padding: 2px 7px; border-radius: 20px;
+    font-weight: 600; border: 1px solid; text-align: center;
+  }
+  .pr-open   { color: #3fb950; border-color: #238636; background: #0f2419; }
+  .pr-merged { color: #a371f7; border-color: #6e40c9; background: #1a0f3c; }
+
+  .branch-status {
+    font-size: 11px; font-weight: 600; opacity: 0; transition: opacity 0.3s ease;
+  }
+  .branch-status.merged-status   { color: #3fb950; }
+  .branch-status.retarget-status { color: #58a6ff; }
+  .branch-status.show { opacity: 1; }
+
+  .terminal {
+    background: #010409; border: 1px solid #30363d;
+    border-radius: 8px; padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.8;
+  }
+  .t-line { opacity: 0; transition: opacity 0.25s ease; white-space: pre; }
+  .t-line.show { opacity: 1; }
+  .t-prompt { color: #3fb950; }
+  .t-cmd { color: #e6edf3; }
+  .t-out { color: #8b949e; }
+  .t-success { color: #3fb950; }
+  .t-info { color: #58a6ff; }
+
+  .approval-box {
+    display: flex; align-items: center; gap: 10px;
+    background: #1a2e1a; border: 1px solid #238636; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; color: #3fb950; opacity: 0;
+    transition: opacity 0.4s ease; font-family: 'JetBrains Mono', monospace;
+  }
+  .approval-box.show { opacity: 1; }
+
+  .progress {
+    display: flex; justify-content: center; gap: 8px; margin-top: 24px;
+  }
+  .pdot {
+    width: 8px; height: 8px; border-radius: 50%; background: #30363d;
+    transition: background 0.3s ease, transform 0.3s ease; cursor: pointer;
+  }
+  .pdot.active { background: #58a6ff; transform: scale(1.3); }
+  .pdot.done   { background: #3fb950; }
+
+  .nav { display: flex; gap: 12px; margin-top: 20px; justify-content: center; }
+  .btn {
+    padding: 8px 22px; border-radius: 6px; border: 1px solid #30363d;
+    background: #21262d; color: #e6edf3;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  }
+  .btn:hover { border-color: #58a6ff; background: #1c2128; }
+  .btn.primary { border-color: #238636; background: #0f2419; color: #3fb950; }
+  .btn.primary:hover { background: #1a2e1a; }
+  .btn:disabled { opacity: 0.3; cursor: default; }
+</style>
+</head>
+<body>
+
+<h1>Agentic Coding Workflow — Visualised</h1>
+
+<div class="stage">
+  <div class="terminal-bar">
+    <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+    <span class="terminal-title" id="terminal-title">Step 1 of 5 — Feature Request</span>
+  </div>
+
+  <!-- SCENE 1 -->
+  <div class="scene active" id="scene-1">
+    <div class="scene-label">Step 1 — Feature request</div>
+    <div class="scene-title">Developer asks the agent to build a feature</div>
+    <div class="scene-sub">The agent reads the full scope before doing anything</div>
+    <div class="chat">
+      <div class="bubble" id="b1-1">
+        <div class="avatar user">👤</div>
+        <div class="msg">Build a new FastAPI REST endpoint for ...</div>
+      </div>
+      <div class="bubble" id="b1-2">
+        <div class="avatar agent">🤖</div>
+        <div class="msg agent-msg">
+          Got it. Before I write any code, let me break this into reviewable chunks and propose a plan for your approval.
+          <br><br>
+          Reading full scope...
+          <br><br>
+          Identifying layers and dependencies...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 2 -->
+  <div class="scene" id="scene-2">
+    <div class="scene-label">Step 2 — Chunk proposal</div>
+    <div class="scene-title">Agent proposes the breakdown — waits for approval</div>
+    <div class="scene-sub">No code written yet</div>
+    <div class="bubble visible" style="margin-bottom:4px">
+      <div class="avatar agent">🤖</div>
+      <div class="msg agent-msg">Here's my proposed chunk breakdown. Please review and confirm before I start:</div>
+    </div>
+    <table class="plan-table">
+      <thead><tr><th>#</th><th>Branch</th><th>Contains</th></tr></thead>
+      <tbody id="plan-rows"></tbody>
+    </table>
+    <div class="approval-box" id="approval-box">✓ &nbsp; Human approved the plan — writing FEATURE_PLAN.md</div>
+  </div>
+
+  <!-- SCENE 3 -->
+  <div class="scene" id="scene-3">
+    <div class="scene-label">Step 3 — Execution</div>
+    <div class="scene-title">Agent executes one chunk at a time</div>
+    <div class="scene-sub">One branch → one concern → one PR → confirm → next chunk</div>
+    <div class="terminal" id="terminal-3">
+      <div class="t-line" id="t3-1"><span class="t-prompt">$</span><span class="t-cmd"> cat FEATURE_PLAN.md  <span class="t-out"># re-read plan before each chunk</span></span></div>
+      <div class="t-line" id="t3-2"><span class="t-out">  chunk 1: feat/db-schema  ✓ confirmed</span></div>
+      <div class="t-line" id="t3-3"><span class="t-prompt">$</span><span class="t-cmd"> git town hack feat/db-schema</span></div>
+      <div class="t-line" id="t3-4"><span class="t-success">  ✓ Created feat/db-schema off main</span></div>
+      <div class="t-line" id="t3-5"><span class="t-out">  ... implementing schema and migrations only ...</span></div>
+      <div class="t-line" id="t3-6"><span class="t-prompt">$</span><span class="t-cmd"> git town propose</span></div>
+      <div class="t-line" id="t3-7"><span class="t-success">  ✓ PR opened: feat/db-schema → main</span></div>
+      <div class="t-line" id="t3-8"><span class="t-prompt">$</span><span class="t-cmd"> git town append feat/validators</span></div>
+      <div class="t-line" id="t3-9"><span class="t-success">  ✓ Created feat/validators stacked on feat/db-schema</span></div>
+      <div class="t-line" id="t3-10"><span class="t-out">  ... implementing validators only ...</span></div>
+      <div class="t-line" id="t3-11"><span class="t-prompt">$</span><span class="t-cmd"> git town propose</span></div>
+      <div class="t-line" id="t3-12"><span class="t-success">  ✓ PR opened: feat/validators → feat/db-schema</span></div>
+      <div class="t-line" id="t3-13"><span class="t-info">  → Repeating for service, controller...</span></div>
+    </div>
+  </div>
+
+  <!-- SCENE 4 -->
+  <div class="scene" id="scene-4">
+    <div class="scene-label">Step 4 — Review</div>
+    <div class="scene-title">Stack is ready — small focused PRs for review</div>
+    <div class="scene-sub">Each PR is one concern. Reviewable in minutes.</div>
+    <div class="col-header">
+      <span>Branch</span><span>Current branch</span><span>Target branch</span><span>Status</span><span></span>
+    </div>
+    <div class="branch-stack">
+      <div class="branch-item" id="br-controller">
+        <span class="branch-name">feat/controller</span>
+        <span class="branch-cur">feat/controller</span>
+        <span class="branch-tgt">feat/service</span>
+        <span class="pr-badge pr-open">Open</span>
+        <span class="branch-status merged-status" id="bs-controller"></span>
+      </div>
+      <div class="branch-item" id="br-service">
+        <span class="branch-name">feat/service</span>
+        <span class="branch-cur">feat/service</span>
+        <span class="branch-tgt">feat/validators</span>
+        <span class="pr-badge pr-open">Open</span>
+        <span class="branch-status merged-status" id="bs-service"></span>
+      </div>
+      <div class="branch-item" id="br-validators">
+        <span class="branch-name">feat/validators</span>
+        <span class="branch-cur">feat/validators</span>
+        <span class="branch-tgt">feat/db-schema</span>
+        <span class="pr-badge pr-open">Open</span>
+        <span class="branch-status merged-status" id="bs-validators"></span>
+      </div>
+      <div class="branch-item" id="br-schema">
+        <span class="branch-name">feat/db-schema</span>
+        <span class="branch-cur">feat/db-schema</span>
+        <span class="branch-tgt">main</span>
+        <span class="pr-badge pr-open">Open</span>
+        <span class="branch-status merged-status" id="bs-schema"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 5 -->
+  <div class="scene" id="scene-5">
+    <div class="scene-label">Step 5 — Merge cascade</div>
+    <div class="scene-title">Merging bottom up — GitHub retargets automatically</div>
+    <div class="scene-sub">No manual retargeting needed</div>
+    <div class="col-header">
+      <span>Branch</span><span>Current branch</span><span>Target branch</span><span>Status</span><span></span>
+    </div>
+    <div class="branch-stack">
+      <div class="branch-item" id="m-controller">
+        <span class="branch-name">feat/controller</span>
+        <span class="branch-cur">feat/controller</span>
+        <span class="branch-tgt" id="mt-controller">feat/service</span>
+        <span class="pr-badge pr-open" id="mp-controller">Open</span>
+        <span class="branch-status" id="ms-controller"></span>
+      </div>
+      <div class="branch-item" id="m-service">
+        <span class="branch-name">feat/service</span>
+        <span class="branch-cur">feat/service</span>
+        <span class="branch-tgt" id="mt-service">feat/validators</span>
+        <span class="pr-badge pr-open" id="mp-service">Open</span>
+        <span class="branch-status" id="ms-service"></span>
+      </div>
+      <div class="branch-item" id="m-validators">
+        <span class="branch-name">feat/validators</span>
+        <span class="branch-cur">feat/validators</span>
+        <span class="branch-tgt" id="mt-validators">feat/db-schema</span>
+        <span class="pr-badge pr-open" id="mp-validators">Open</span>
+        <span class="branch-status" id="ms-validators"></span>
+      </div>
+      <div class="branch-item" id="m-schema">
+        <span class="branch-name">feat/db-schema</span>
+        <span class="branch-cur">feat/db-schema</span>
+        <span class="branch-tgt" id="mt-schema">main</span>
+        <span class="pr-badge pr-open" id="mp-schema">Open</span>
+        <span class="branch-status" id="ms-schema"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="progress">
+  <div class="pdot active" onclick="goTo(1)"></div>
+  <div class="pdot" onclick="goTo(2)"></div>
+  <div class="pdot" onclick="goTo(3)"></div>
+  <div class="pdot" onclick="goTo(4)"></div>
+  <div class="pdot" onclick="goTo(5)"></div>
+</div>
+<div class="nav">
+  <button class="btn" id="btn-prev" onclick="prev()" disabled>← Prev</button>
+  <button class="btn primary" id="btn-next" onclick="next()">Next →</button>
+</div>
+
+<script>
+  let current = 1;
+  const total = 5;
+  const timers = [];
+
+  function clearTimers() { timers.forEach(clearTimeout); timers.length = 0; }
+  function t(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+  function goTo(n) {
+    clearTimers();
+    document.getElementById(`scene-${current}`).classList.remove('active');
+    current = n;
+    document.getElementById(`scene-${current}`).classList.add('active');
+    document.querySelectorAll('.pdot').forEach((d, i) => {
+      d.classList.remove('active','done');
+      if (i < current - 1) d.classList.add('done');
+    });
+    document.querySelectorAll('.pdot')[current-1].classList.add('active');
+    document.getElementById('btn-prev').disabled = current === 1;
+    document.getElementById('btn-next').disabled = current === total;
+    document.getElementById('btn-next').textContent = current === total ? '✓ Done' : 'Next →';
+    document.getElementById('terminal-title').textContent = `Step ${current} of ${total} — ${['Feature Request','Chunk Proposal','Execution','Review','Merge Cascade'][current-1]}`;
+    runScene(current);
+  }
+
+  function next() { if (current < total) goTo(current + 1); }
+  function prev() { if (current > 1) goTo(current - 1); }
+  function runScene(n) { [,runScene1,runScene2,runScene3,runScene4,runScene5][n](); }
+
+  function runScene1() {
+    ['b1-1','b1-2'].forEach(id => document.getElementById(id).classList.remove('visible'));
+    t(() => document.getElementById('b1-1').classList.add('visible'), 200);
+    t(() => document.getElementById('b1-2').classList.add('visible'), 900);
+  }
+
+  const chunks = [
+    ['1', 'feat/db-schema',  'Schema + migrations only'],
+    ['2', 'feat/validators', 'Request/response validators only'],
+    ['3', 'feat/service',    'Business logic only'],
+    ['4', 'feat/controller', 'Route handlers only'],
+  ];
+
+  function runScene2() {
+    document.getElementById('plan-rows').innerHTML = '';
+    document.getElementById('approval-box').classList.remove('show');
+    chunks.forEach(([n, branch, desc], i) => {
+      t(() => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${n}</td><td><span class="chunk-badge">${branch}</span></td><td style="color:#8b949e">${desc}</td>`;
+        tr.style.opacity = '0'; tr.style.transition = 'opacity 0.3s ease';
+        document.getElementById('plan-rows').appendChild(tr);
+        setTimeout(() => tr.style.opacity = '1', 50);
+      }, 300 + i * 350);
+    });
+    t(() => document.getElementById('approval-box').classList.add('show'), 300 + chunks.length * 350 + 600);
+  }
+
+  function runScene3() {
+    for (let i = 1; i <= 13; i++) {
+      const el = document.getElementById(`t3-${i}`);
+      if (el) el.classList.remove('show');
+    }
+    for (let i = 1; i <= 13; i++) {
+      t(() => document.getElementById(`t3-${i}`) && document.getElementById(`t3-${i}`).classList.add('show'), 300 + i * 280);
+    }
+  }
+
+  function runScene4() {
+    ['br-controller','br-service','br-validators','br-schema'].forEach(id => {
+      document.getElementById(id).classList.remove('visible');
+    });
+    ['br-controller','br-service','br-validators','br-schema'].forEach((id, i) => {
+      t(() => document.getElementById(id).classList.add('visible'), 200 + i * 250);
+    });
+  }
+
+  function runScene5() {
+    // reset all
+    ['m-schema','m-validators','m-service','m-controller'].forEach(id => {
+      document.getElementById(id).classList.remove('visible','merged','retargeted');
+    });
+    ['ms-schema','ms-validators','ms-service','ms-controller'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = ''; el.className = 'branch-status';
+    });
+    ['mp-schema','mp-validators','mp-service','mp-controller'].forEach(id => {
+      const el = document.getElementById(id);
+      el.className = 'pr-badge pr-open'; el.textContent = 'Open';
+    });
+    document.getElementById('mt-validators').textContent = 'feat/db-schema';
+    document.getElementById('mt-validators').className = 'branch-tgt';
+    document.getElementById('mt-service').textContent = 'feat/validators';
+    document.getElementById('mt-service').className = 'branch-tgt';
+    document.getElementById('mt-controller').textContent = 'feat/service';
+    document.getElementById('mt-controller').className = 'branch-tgt';
+    document.getElementById('mt-schema').textContent = 'main';
+    document.getElementById('mt-schema').className = 'branch-tgt';
+
+    // show all
+    ['m-controller','m-service','m-validators','m-schema'].forEach((id, i) => {
+      t(() => document.getElementById(id).classList.add('visible'), 200 + i * 200);
+    });
+
+    const base = 1400;
+
+    // 1. merge db-schema
+    t(() => {
+      document.getElementById('m-schema').classList.add('merged');
+      document.getElementById('mp-schema').className = 'pr-badge pr-merged';
+      document.getElementById('mp-schema').textContent = 'Merged';
+      document.getElementById('ms-schema').textContent = '✓ merged';
+      document.getElementById('ms-schema').classList.add('merged-status','show');
+    }, base);
+
+    // 2. validators target changes to main
+    t(() => {
+      document.getElementById('m-validators').classList.add('retargeted');
+      document.getElementById('mt-validators').textContent = 'main';
+      document.getElementById('mt-validators').classList.add('retargeted-txt');
+      document.getElementById('ms-validators').textContent = '↪ auto retargeted';
+      document.getElementById('ms-validators').classList.add('retarget-status','show');
+    }, base + 1400);
+
+    // 3. merge validators
+    t(() => {
+      document.getElementById('m-validators').classList.remove('retargeted');
+      document.getElementById('m-validators').classList.add('merged');
+      document.getElementById('mt-validators').classList.remove('retargeted-txt');
+      document.getElementById('mp-validators').className = 'pr-badge pr-merged';
+      document.getElementById('mp-validators').textContent = 'Merged';
+      document.getElementById('ms-validators').textContent = '✓ merged';
+      document.getElementById('ms-validators').classList.remove('retarget-status');
+      document.getElementById('ms-validators').classList.add('merged-status');
+    }, base + 2800);
+
+    // 4. service target changes to main
+    t(() => {
+      document.getElementById('m-service').classList.add('retargeted');
+      document.getElementById('mt-service').textContent = 'main';
+      document.getElementById('mt-service').classList.add('retargeted-txt');
+      document.getElementById('ms-service').textContent = '↪ auto retargeted';
+      document.getElementById('ms-service').classList.add('retarget-status','show');
+    }, base + 4000);
+
+    // 5. merge service
+    t(() => {
+      document.getElementById('m-service').classList.remove('retargeted');
+      document.getElementById('m-service').classList.add('merged');
+      document.getElementById('mt-service').classList.remove('retargeted-txt');
+      document.getElementById('mp-service').className = 'pr-badge pr-merged';
+      document.getElementById('mp-service').textContent = 'Merged';
+      document.getElementById('ms-service').textContent = '✓ merged';
+      document.getElementById('ms-service').classList.remove('retarget-status');
+      document.getElementById('ms-service').classList.add('merged-status');
+    }, base + 5400);
+
+    // 6. controller target changes to main
+    t(() => {
+      document.getElementById('m-controller').classList.add('retargeted');
+      document.getElementById('mt-controller').textContent = 'main';
+      document.getElementById('mt-controller').classList.add('retargeted-txt');
+      document.getElementById('ms-controller').textContent = '↪ auto retargeted';
+      document.getElementById('ms-controller').classList.add('retarget-status','show');
+    }, base + 6600);
+
+    // 7. merge controller
+    t(() => {
+      document.getElementById('m-controller').classList.remove('retargeted');
+      document.getElementById('m-controller').classList.add('merged');
+      document.getElementById('mt-controller').classList.remove('retargeted-txt');
+      document.getElementById('mp-controller').className = 'pr-badge pr-merged';
+      document.getElementById('mp-controller').textContent = 'Merged';
+      document.getElementById('ms-controller').textContent = '✓ merged';
+      document.getElementById('ms-controller').classList.remove('retarget-status');
+      document.getElementById('ms-controller').classList.add('merged-status');
+    }, base + 8000);
+  }
+
+  runScene1();
+</script>
+
+<footer style="text-align:center; margin-top: 32px; padding-bottom: 24px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #484f58;">
+  Github: <a href="https://github.com/abhilash-m96" target="_blank" style="color:#58a6ff; text-decoration:none;">@abhilash-m96</a>
+  &nbsp;·&nbsp;
+</footer>
+</body>
+</html>
