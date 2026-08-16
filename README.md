@@ -11,6 +11,8 @@ plan, stack, and ship in small reviewable chunks automatically.
 AI agents complete tasks end-to-end - one giant PR, 'n' no. of files,
 zero reviewability. Reviewers surrender. Bugs ship. Technical debt accumulates silently.
 
+On top of that, not knowing the author's intent, thought process, conversations with the agent, and discussion resolutions is a critical missing piece—making it require even more effort for reviewers to understand and review the code.
+
 **The bottleneck didn't disappear. It just moved from writing code to reviewing it.**
 
 ---
@@ -56,8 +58,9 @@ That's it. Your agent follows this workflow from the next feature onwards.
 1. **Propose** a chunk breakdown before writing any code - human approves the plan
 2. **Write** the agreed plan to `FEATURE_PLAN.md` in the repo - persistent memory, no drift
 3. **Execute** one chunk at a time - one branch, one concern, one PR per chunk, layered on top of the previous chunk
-4. **Re-read** `FEATURE_PLAN.md` at the start of every chunk - mandatory, not optional
-5. **Confirm** with the human before moving to the next chunk
+4. **Log the author's thought process & decisions** in `FEATURE_PLAN.md` upon chunk completion — record initial scope adjustments, trade-offs evaluated (alternatives considered), and final resolutions. This bridges the author-agent conversation directly to the reviewer so they understand the exact rationale and constraints behind the code.
+5. **Re-read** `FEATURE_PLAN.md` at the start of every chunk - mandatory, not optional
+6. **Confirm** with the human before moving to the next chunk
 
 
 **Example of chunks: For a new REST API endpoint - chunks can look like this:**
