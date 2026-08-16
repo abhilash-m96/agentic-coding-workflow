@@ -106,9 +106,13 @@ git town propose
 ```
 First chunk targets `main`. Every subsequent chunk targets the chunk above it.
 
-**4g. Mark the chunk as done in FEATURE_PLAN.md:**
+**4g. Mark the chunk as done in FEATURE_PLAN.md with Discussion Summary & Key Decisions:**
 ```markdown
 - [x] feat/db-schema — Schema + migrations
+  - **Discussion Summary & Decisions**:
+    - **Initial Scope & Feedback**: <Summary of initial proposal and user feedback/guidance>
+    - **Trade-offs Evaluated**: <Design choices, alternatives considered, codebase patterns verified>
+    - **Final Resolution**: <Concrete outcome and architectural decisions agreed upon>
 ```
 
 Commit the update:
@@ -117,7 +121,7 @@ git add FEATURE_PLAN.md
 git commit -m "plan: mark feat/db-schema as done"
 ```
 
-**4h. Confirm with the human before moving to the next chunk.**
+**4h. Confirm with the user before moving to the next chunk.**
 
 ---
 
